@@ -1,9 +1,16 @@
 import type { NextAuthConfig } from "next-auth";
+import type { Account } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import { z } from "zod";
 
 import { env } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
+
+declare module "next-auth" {
+  interface Account {
+    prismaUserId?: string;
+  }
+}
 
 export const authOptions: NextAuthConfig = {
   secret: env.NEXTAUTH_SECRET,
@@ -61,21 +68,22 @@ export const authOptions: NextAuthConfig = {
         },
       });
 
+      (account as Account).prismaUserId = dbUser.id;
+
       return true;
     },
-    async jwt({ token, user }) {
-      if (user) {
-        token.userId = user.id;
-        if (user.email) {
-          token.email = user.email;
-        }
+    async jwt({ token, user, account }) {
+      // First login, store Prisma user ID in JWT
+      if (account && user) {
+        token.userId = (account as Account).prismaUserId ?? user.id;
       }
       return token;
     },
+
     async session({ session, token }) {
-      if (session.user && token.userId) {
+      // Map Prisma User ID to session.user.id
+      if (session.user) {
         session.user.id = token.userId as string;
-        session.user.email = token.email as string;
       }
       return session;
     },

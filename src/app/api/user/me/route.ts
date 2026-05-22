@@ -43,7 +43,7 @@ export async function GET() {
     }
 
     const user = await prisma.user.findUnique({
-        where: { email: session.user.email },
+        where: { id: session.user.id },
         select: { id: true, name: true, email: true, image: true },
     });
 
@@ -70,7 +70,6 @@ export async function PATCH(request: Request) {
     const firstName = body.firstName?.trim() ?? "";
     const lastName = body.lastName?.trim() ?? "";
     const email = body.email?.trim().toLowerCase() ?? "";
-    const password = body.password ?? "";
     const avatar = body.avatar;
 
     if (!email) {
