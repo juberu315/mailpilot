@@ -52,7 +52,23 @@ export default function EmailDetailPage() {
 
   const handleApproveReply = async () => {
     // Placeholder: integrate Gmail draft/send later
-    alert("Approved reply: " + reply);
+    setLoading(true);
+    try {
+      if(!email?.id) throw new Error("Email ID is missing");
+      const res = await fetch("/api/emails/create-draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emailId: email?.id, draftBody: reply }),
+      });
+      const data = await res.json();
+      if (data.success) alert("Draft created successfully!");
+      else alert("Failed to create draft: " + data.error);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to create draft");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -101,6 +117,7 @@ export default function EmailDetailPage() {
                 <Button
                   className="mt-2"
                   onClick={handleApproveReply}
+                  disabled={loading}
                 >
                   Approve / Send
                 </Button>

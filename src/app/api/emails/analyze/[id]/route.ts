@@ -27,13 +27,25 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         const existingAnalysis = await prisma.emailAnalysis.findFirst({
             where: { emailId: email.id },
         });
-        if (existingAnalysis) return NextResponse.json(existingAnalysis)
+        if (existingAnalysis?.summary && existingAnalysis.category && existingAnalysis.priority && existingAnalysis.sentiment && existingAnalysis.intent && existingAnalysis.suggestedReply) return NextResponse.json({...existingAnalysis, ...email})
          const prompt = `
             Summarize this email in 1-2 sentences.
             Classify it into category (work, personal, promotion, notification).
             Suggest priority (high, medium, low).
             Optionally provide sentiment (positive, neutral, negative) and intent.
             Also generate a professional suggested reply.
+
+            Please respond ONLY in JSON format:
+
+            {
+                "summary": "...",
+                "category": "...",
+                "priority": "...",
+                "sentiment": "...",
+                "intent": "...",
+                "suggestedReply": "..."
+            }   
+
 
             Email Body:
             ${email.body ?? ""}
@@ -45,38 +57,42 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
             temperature: 0.2,
         });
         
-        const text = response.choices[0].message?.content ?? "";
-        console.log("text==================?", text);
-
-        // Parse OpenAI output
-        const matchSummary = text.match(/Summary:\s*(.*)/i);
-        const matchCategory = text.match(/Category:\s*(.*)/i);
-        const matchPriority = text.match(/Priority:\s*(.*)/i);
-        const matchSentiment = text.match(/Sentiment:\s*(.*)/i);
-        const matchIntent = text.match(/Intent:\s*(.*)/i);
-        const matchSuggestedReply = text.match(/Suggested Reply:\s*(.*)/i);
-
-        const summary = matchSummary?.[1].trim() ?? "";
-        const category = matchCategory?.[1].trim() ?? "";
-        const priority = matchPriority?.[1].trim() ?? "";
-        const sentiment = matchSentiment?.[1].trim() ?? "";
-        const intent = matchIntent?.[1].trim() ?? "";
-        const suggestedReply = matchSuggestedReply?.[1].trim() ?? "";
+        const rawText = response.choices[0].message?.content ?? "";
+        let parsed: {
+            summary?: string;
+            category?: string;
+            priority?: string;
+            sentiment?: string;
+            intent?: string;
+            suggestedReply?: string;
+        } = {};
+        try {
+            parsed = JSON.parse(rawText);
+        } catch (err) {
+            console.error("Failed to parse AI JSON:", err, rawText);
+        }
+        console.log("parsed===========>", parsed);
+        const summary = parsed.summary ?? "";
+        const category = parsed.category ?? "";
+        const priority = parsed.priority ?? null;
+        const sentiment = parsed.sentiment ?? null;
+        const intent = parsed.intent ?? null;
+        const suggestedReply = parsed.suggestedReply ?? null;
 
         // Save to database
         const analysis = await prisma.emailAnalysis.create({
             data: {
                 emailId: email.id,
-                summary,
-                category,
-                priority,
-                sentiment,
-                intent,
-                suggestedReply,
+                summary: summary ?? "",
+                category: category ?? "",
+                priority: priority ?? null,
+                sentiment: sentiment ?? null,
+                intent: intent ?? null,
+                suggestedReply: suggestedReply ?? null,
             },
         });
 
-        return NextResponse.json(analysis);
+        return NextResponse.json({...analysis, ...email});
     } catch (err) {
         console.error("Error analyzing emails:", err);
         return NextResponse.json({ error: "Failed to analyze emails" }, { status: 500 });
