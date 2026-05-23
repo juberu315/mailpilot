@@ -15,6 +15,16 @@ export async function fetchGmailEmails(userId: string) {
     refresh_token: account.refresh_token!,
   });
 
+
+  // 3. Refresh access token if expired
+  try {
+    const tokenResponse = await oauth2Client.getAccessToken();
+    oauth2Client.setCredentials({ access_token: tokenResponse.token });
+  } catch (err) {
+    console.error("Failed to refresh access token", err);
+    throw new Error("Failed to refresh access token");
+  }
+
   // 3. Connect to Gmail API
   const gmail = google.gmail({ version: "v1", auth: oauth2Client });
 

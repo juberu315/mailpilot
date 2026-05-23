@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
@@ -31,7 +31,7 @@ export function EmailTable() {
     try {
       const res = await fetch("/api/emails");
       const data = await res.json();
-      setEmails(data);
+      setEmails((prev) => [...data, ...prev]);
       setTotalPages(Math.ceil(data.length / PAGE_SIZE));
     } catch (err) {
       console.error(err);
@@ -39,6 +39,24 @@ export function EmailTable() {
       setLoading(false);
     }
   };
+
+  // Fetch emails from database on mount
+  useEffect(() => {
+    const fetchEmailsFromDB = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/emails/db"); // returns stored emails
+        const data = await res.json();
+        setEmails(data);
+      } catch (err) {
+        console.error("Failed to fetch emails from DB", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEmailsFromDB();
+  }, []);
 
   const paginatedEmails = emails.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 

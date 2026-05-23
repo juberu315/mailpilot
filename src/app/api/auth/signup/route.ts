@@ -33,8 +33,6 @@ export async function POST(request: Request) {
       data: {
         name,
         email: email.toLowerCase(),
-        phone: phone ?? null,
-        password: hashedPassword,
       },
       select: {
         id: true,
