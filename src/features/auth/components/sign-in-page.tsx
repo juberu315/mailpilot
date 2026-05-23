@@ -68,21 +68,21 @@ export function SignInPage() {
           />
 
           <span className="text-[25px] font-black tracking-[-0.05em] text-[#050607] dark:text-white">
-            BKleads
+            NeuroMail
           </span> */}
          <Image
           src="/images/logo.png"
-          alt="BKleads"
+          alt="NeuroMail"
           width={150}
-          height={300}
+          height={100}
           className="h-[100px] w-[250px] dark:hidden"
         />
 
         <Image
           src="/images/logo.png"
-          alt="BKleads"
+          alt="NeuroMail"
           width={150}
-          height={300}
+          height={100}
           className="hidden h-[100px] w-[250px] dark:block"
         />
         </div>

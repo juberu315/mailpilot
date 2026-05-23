@@ -183,17 +183,17 @@ function SidebarContent({
           <Link href="/dashboard" className="flex items-center">
             <Image
               src="/images/logo.png"
-              alt="BKleads"
+              alt="NeuroMail"
               width={200}
-              height={400}
+              height={250}
               className="h-full w-full dark:hidden"
             />
 
             <Image
               src="/images/logo.png"
-              alt="BKleads"
+              alt="NeuroMail"
               width={200}
-              height={400}
+              height={250}
               className="hidden h-full w-full dark:block"
             />
           </Link>

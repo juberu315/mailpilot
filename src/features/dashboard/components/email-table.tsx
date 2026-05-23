@@ -100,7 +100,6 @@ export function EmailTable() {
                     </SheetHeader>
                     <div className="space-y-4 font-sans text-gray-800 text-sm">
                         <p><strong>Body:</strong> {email.body}</p>
-                        <p><strong>Summary:</strong> {email.summary ?? "Not summarized"}</p>
                         <Link href={`/emails/${email.id}`} className="text-blue-600 hover:underline font-medium mt-2 inline-block">
                         Open Full Detail Page
                         </Link>

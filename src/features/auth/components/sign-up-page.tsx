@@ -99,7 +99,7 @@ export function SignUpPage() {
         <div className="mb-[34px] flex items-center justify-center gap-[12px]">
         <Image
           src="/images/logo.png"
-          alt="BKleads"
+          alt="NeuroMail"
           width={150}
           height={300}
           className="h-[100px] w-[250px] dark:hidden"
@@ -107,7 +107,7 @@ export function SignUpPage() {
 
         <Image
           src="/images/logo.png"
-          alt="BKleads"
+          alt="NeuroMail"
           width={150}
           height={300}
           className="hidden h-[100px] w-[250px] dark:block"
