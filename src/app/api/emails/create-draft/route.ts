@@ -28,35 +28,36 @@ export async function POST(req: Request) {
 
   try {
     // Initialize Gmail API client
-    const oauth2Client = new google.auth.OAuth2();
+        const oauth2Client = new google.auth.OAuth2();
     oauth2Client.setCredentials({
-      access_token: account.access_token!,
-      refresh_token: account.refresh_token!,
+    access_token: account.access_token!,
+    refresh_token: account.refresh_token!,
     });
 
     const gmail = google.gmail({ version: "v1", auth: oauth2Client });
 
-    // Create the draft
     const rawMessage = [
-      `From: ${session.user.email}`,
-      `To: ${email.sender}`,
-      `Subject: Re: ${email.subject}`,
-      "",
-      draftBody,
-    ].join("\n");
+    `From: ${session.user.email}`,
+    `To: ${email.sender}`,
+    `Subject: Re: ${email.subject}`,
+    `MIME-Version: 1.0`,
+    `Content-Type: text/plain; charset="UTF-8"`,
+    ``,
+    draftBody,
+    ].join("\r\n");
 
     const base64Encoded = Buffer.from(rawMessage)
-      .toString("base64")
-      .replace(/\+/g, "-")
-      .replace(/\//g, "_")
-      .replace(/=+$/, "");
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
 
     const draftRes = await gmail.users.drafts.create({
-      userId: "me",
-      requestBody: {
-        message: { raw: base64Encoded },
-      },
+    userId: "me",
+    requestBody: { message: { raw: base64Encoded } },
     });
+
+    console.log("Draft ID:", draftRes.data.id);
 
     return NextResponse.json({ success: true, draftId: draftRes.data.id });
   } catch (err) {

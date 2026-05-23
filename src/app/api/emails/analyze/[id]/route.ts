@@ -27,8 +27,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         const existingAnalysis = await prisma.emailAnalysis.findFirst({
             where: { emailId: email.id },
         });
-        if (existingAnalysis?.summary && existingAnalysis.category && existingAnalysis.priority && existingAnalysis.sentiment && existingAnalysis.intent && existingAnalysis.suggestedReply) return NextResponse.json({...existingAnalysis, ...email})
-         const prompt = `
+        if (existingAnalysis?.summary && existingAnalysis.category && existingAnalysis.priority && existingAnalysis.suggestedReply) return NextResponse.json({...email, ...existingAnalysis})
+        
+        const prompt = `
             Summarize this email in 1-2 sentences.
             Classify it into category (work, personal, promotion, notification).
             Suggest priority (high, medium, low).
@@ -71,7 +72,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         } catch (err) {
             console.error("Failed to parse AI JSON:", err, rawText);
         }
-        console.log("parsed===========>", parsed);
         const summary = parsed.summary ?? "";
         const category = parsed.category ?? "";
         const priority = parsed.priority ?? null;
@@ -80,9 +80,18 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         const suggestedReply = parsed.suggestedReply ?? null;
 
         // Save to database
-        const analysis = await prisma.emailAnalysis.create({
-            data: {
+        const analysis = await prisma.emailAnalysis.upsert({
+            where: { id: existingAnalysis?.id ?? "" }, // use existing id or generate new
+            create: {
                 emailId: email.id,
+                summary: summary ?? "",
+                category: category ?? "",
+                priority: priority ?? null,
+                sentiment: sentiment ?? null,
+                intent: intent ?? null,
+                suggestedReply: suggestedReply ?? null,
+            },
+            update: {
                 summary: summary ?? "",
                 category: category ?? "",
                 priority: priority ?? null,
@@ -92,7 +101,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
             },
         });
 
-        return NextResponse.json({...analysis, ...email});
+        return NextResponse.json({...email, ...analysis});
     } catch (err) {
         console.error("Error analyzing emails:", err);
         return NextResponse.json({ error: "Failed to analyze emails" }, { status: 500 });

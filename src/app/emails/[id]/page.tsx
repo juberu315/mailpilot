@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 
 interface Email {
   id: string;
+  emailId: string;
   sender: string;
   subject: string;
   body: string;
@@ -27,6 +28,7 @@ export default function EmailDetailPage() {
   const id = params?.id as string;
   const [email, setEmail] = useState<Email | null>(null);
   const [loading, setLoading] = useState(false);
+  const [aloading, asetLoading] = useState(false);
   const [reply, setReply] = useState("");
 
   // Fetch email + AI analysis
@@ -52,13 +54,13 @@ export default function EmailDetailPage() {
 
   const handleApproveReply = async () => {
     // Placeholder: integrate Gmail draft/send later
-    setLoading(true);
+    asetLoading(true);
     try {
-      if(!email?.id) throw new Error("Email ID is missing");
+      if(!email?.emailId) throw new Error("Email ID is missing");
       const res = await fetch("/api/emails/create-draft", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ emailId: email?.id, draftBody: reply }),
+        body: JSON.stringify({ emailId: email?.emailId, draftBody: reply }),
       });
       const data = await res.json();
       if (data.success) alert("Draft created successfully!");
@@ -67,7 +69,7 @@ export default function EmailDetailPage() {
       console.error(err);
       alert("Failed to create draft");
     } finally {
-      setLoading(false);
+      asetLoading(false);
     }
   };
 
@@ -117,7 +119,7 @@ export default function EmailDetailPage() {
                 <Button
                   className="mt-2"
                   onClick={handleApproveReply}
-                  disabled={loading}
+                  disabled={aloading}
                 >
                   Approve / Send
                 </Button>
