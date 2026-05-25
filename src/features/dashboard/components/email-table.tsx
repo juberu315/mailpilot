@@ -1,140 +1,140 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { useEffect, useState, useRef } from "react";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
-import clsx from "clsx";
-import Link from "next/link";
 
 interface Email {
   id: string;
   sender: string;
   subject: string;
-  body?: string;
   snippet?: string;
-  summary?: string;
   read: boolean;
   receivedAt: string;
+  summary?: string;
+  category?: string;
+  priority?: string;
 }
-
-const PAGE_SIZE = 10;
 
 export function EmailTable() {
   const [emails, setEmails] = useState<Email[]>([]);
   const [loading, setLoading] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [isFetching, setIsFetching] = useState(false);
+  const observerRef = useRef<HTMLDivElement>(null);
 
-  const fetchEmails = async () => {
-    setLoading(true);
+  const pageSize = 20;
+
+  const fetchEmails = async (pageNum: number, append = false) => {
+    setIsFetching(true);
     try {
-      const res = await fetch("/api/emails");
+      const res = await fetch(`/api/emails/db?page=${pageNum}&pageSize=${pageSize}`);
       const data = await res.json();
-      setEmails((prev) => [...data, ...prev]);
-      setTotalPages(Math.ceil(data.length / PAGE_SIZE));
+      setEmails(prev => append ? [...prev, ...data.emails] : data.emails);
+      setPage(data.pagination.page);
+      setTotalPages(data.pagination.totalPages);
     } catch (err) {
-      console.error(err);
+      console.error("Failed to fetch emails:", err);
     } finally {
+      setIsFetching(false);
       setLoading(false);
     }
   };
 
-  // Fetch emails from database on mount
   useEffect(() => {
-    const fetchEmailsFromDB = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch("/api/emails/db"); // returns stored emails
-        const data = await res.json();
-        setEmails(data);
-      } catch (err) {
-        console.error("Failed to fetch emails from DB", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchEmailsFromDB();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoading(true);
+    fetchEmails(1);
   }, []);
 
-  const paginatedEmails = emails.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  // Infinite scroll observer
+  useEffect(() => {
+    if (!observerRef.current) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && page < totalPages && !isFetching) {
+          fetchEmails(page + 1, true);
+        }
+      },
+      { threshold: 1 }
+    );
+    observer.observe(observerRef.current);
+    return () => observer.disconnect();
+  }, [page, totalPages, isFetching]);
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-4">
-        <Button onClick={fetchEmails} disabled={loading}>
-          {loading ? <Loader2 className="animate-spin w-5 h-5 mr-2" /> : null}
-          {loading ? "Loading..." : "Fetch Emails"}
-        </Button>
+    <div className="p-8">
+      <div className="flex justify-between mb-4 items-center">
+        <h2 className="text-xl font-semibold">Inbox</h2>
+        <Button variant="outline" onClick={() => fetchEmails(1)}>Refresh</Button>
       </div>
 
-      <div className="border rounded-lg shadow-lg overflow-hidden h-[600px] relative bg-white">
-        {loading && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center space-y-4 bg-white z-20">
-            <Loader2 className="animate-spin w-10 h-10 text-gray-500" />
-            <p className="text-gray-600 text-lg font-medium">Loading Emails...</p>
+      <div className="overflow-x-auto border rounded-lg">
+        {loading && emails.length === 0 ? (
+          <div className="flex justify-center items-center h-64 text-gray-500">
+            Loading emails...
           </div>
-        )}
-
-        <div className="overflow-y-auto h-full">
-          <table className="min-w-full table-fixed">
-            <tbody>
-              {paginatedEmails.map((email, idx) => (
-                <Sheet key={email.id}>
-                    <SheetTrigger asChild>
-                    <tr  className={clsx("hover:bg-gray-50 cursor-pointer", idx % 2 === 0 ? "bg-white" : "bg-gray-50")} style={{ height: "60px" }}>
-                        <td className="px-4 py-2 text-sm font-medium text-gray-900 truncate max-w-[150px]">{email.sender}</td>
-                        <td className="px-4 py-2 text-sm text-gray-700 truncate max-w-[500px]">
-                            <span className="font-medium">{email.subject}</span> - {email.snippet ?? ""}
-                        </td>
-                        <td className="px-4 py-2 text-sm text-gray-600 text-right truncate">{new Date(email.receivedAt).toLocaleDateString()}</td>
-                    </tr>
-                    </SheetTrigger>
-                    <SheetContent className="bg-white rounded-0 shadow-xl p-6">
-                    <SheetHeader className="border-b pb-4 mb-4">
-                        <SheetTitle className="text-2xl font-semibold text-gray-900">{email.subject}</SheetTitle>
-                        <SheetDescription className="text-gray-600 text-sm mt-1">
-                        From {email.sender} | {email.read ? "Read" : "Unread"} | {new Date(email.receivedAt).toLocaleString()}
-                        </SheetDescription>
-                    </SheetHeader>
-                    <div className="space-y-4 font-sans text-gray-800 text-sm">
-                        <p><strong>Body:</strong> {email.body}</p>
-                        <Link href={`/emails/${email.id}`} className="text-blue-600 hover:underline font-medium mt-2 inline-block">
-                        Open Full Detail Page
-                        </Link>
-                    </div>
-                    </SheetContent>
-                </Sheet>
+        ) : (
+          <table className="table-auto w-full divide-y">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="px-4 py-2 text-left">Subject</th>
+                <th className="px-4 py-2 text-left">From</th>
+                <th className="px-4 py-2 text-left">Snippet</th>
+                <th className="px-4 py-2 text-left">Status</th>
+                <th className="px-4 py-2 text-left">Received At</th>
+                <th className="px-4 py-2 text-left">Detail</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {emails.map((email) => (
+                <tr key={email.id} className="hover:bg-gray-50 cursor-pointer">
+                  <td className="px-4 py-2 truncate max-w-xs">{email.subject}</td>
+                  <td className="px-4 py-2 truncate max-w-xs">{email.sender}</td>
+                  <td className="px-4 py-2 truncate max-w-xs">{email.snippet}</td>
+                  <td className="px-4 py-2">{email.read ? "Read" : "Unread"}</td>
+                  <td className="px-4 py-2">{new Date(email.receivedAt).toLocaleString()}</td>
+                  <td className="px-4 py-2">
+                    <Sheet>
+                      <SheetTrigger asChild>
+                        <Button variant="outline">View</Button>
+                      </SheetTrigger>
+                      <SheetContent>
+                        <h3 className="text-lg font-bold">{email.subject}</h3>
+                        <p><strong>From:</strong> {email.sender}</p>
+                        <p><strong>Status:</strong> {email.read ? "Read" : "Unread"}</p>
+                        <p><strong>Received At:</strong> {new Date(email.receivedAt).toLocaleString()}</p>
+                        <p className="mt-2"><strong>Snippet:</strong> {email.snippet}</p>
+                        <p className="mt-2"><strong>Summary:</strong> {email.summary ?? "Loading AI analysis..."}</p>
+                        <p><strong>Category:</strong> {email.category ?? "Loading..."}</p>
+                        <p><strong>Priority:</strong> {email.priority ?? "Loading..."}</p>
+                        <Button
+                          variant="ghost"
+                          className="mt-4"
+                          onClick={() => window.location.href = `/emails/${email.id}`}
+                        >
+                          Open Detail Page
+                        </Button>
+                      </SheetContent>
+                    </Sheet>
+                  </td>
+                </tr>
               ))}
-              {paginatedEmails.length === 0 && !loading && (
+              {isFetching && (
                 <tr>
-                  <td colSpan={5} className="text-center py-4 text-gray-500 font-medium">
-                    No emails to display
+                  <td colSpan={6} className="px-4 py-6 text-center text-gray-500">
+                    Loading more emails...
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
-        </div>
+        )}
       </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex justify-center space-x-2 mt-4">
-          <Button variant="outline" disabled={currentPage === 1} onClick={() => setCurrentPage(currentPage - 1)}>
-            Prev
-          </Button>
-          {Array.from({ length: totalPages }).map((_, idx) => (
-            <Button key={idx} variant={currentPage === idx + 1 ? "default" : "outline"} onClick={() => setCurrentPage(idx + 1)}>
-              {idx + 1}
-            </Button>
-          ))}
-          <Button variant="outline" disabled={currentPage === totalPages} onClick={() => setCurrentPage(currentPage + 1)}>
-            Next
-          </Button>
-        </div>
-      )}
+      {/* Sentinel div for infinite scroll */}
+      <div ref={observerRef} className="h-8" />
     </div>
   );
 }
