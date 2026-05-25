@@ -6,22 +6,23 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+// ------------------------
+// User & Authentication
+// ------------------------
 model User {
-  id         String   @id @default(cuid())
-  name       String?
-  email      String?  @unique
-  image      String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id                      String   @id @default(cuid())
+  name                    String?
+  email                   String?  @unique
+  image                   String?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 
-  accounts   Account[]
-  emails     Email[]
-
-  sessions Session[]
-
-  roles Role[] @relation("UserRoles")
-
-  twoFactorConfirmations TwoFactorConfirmation[]
+  accounts                Account[]
+  emails                  Email[]
+  sessions                Session[]
+  roles                   Role[]   @relation("UserRoles")
+  twoFactorConfirmation   TwoFactorConfirmation?
 }
 
 model Account {
@@ -47,59 +48,6 @@ model Session {
   userId       String
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
-// ------------------------
-// AI Email Assistant Models
-// ------------------------
-model Email {
-  id           String   @id @default(cuid())
-  userId       String
-  gmailId      String   @unique
-  sender       String
-  subject      String
-  body         String
-  snippet      String?
-  receivedAt   DateTime
-  read         Boolean   @default(false)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-
-  summary      String?   // GPT-generated summary
-  category     String?   // work, personal, invoice
-  priority     String?   // low / medium / high
-  sentiment    String?   // positive / negative / neutral
-  intent       String?   // request, question, follow-up
-
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  analyses     EmailAnalysis[]
-  actions      EmailActionApproval[]
-}
-
-model EmailAnalysis {
-  id             String   @id @default(cuid())
-  emailId        String
-  summary        String
-  category       String
-  priority       String?
-  sentiment      String?
-  intent         String?
-  suggestedReply String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  email          Email    @relation(fields: [emailId], references: [id], onDelete: Cascade)
-}
-
-model EmailActionApproval {
-  id         String   @id @default(cuid())
-  emailId    String
-  action     String   // "send", "draft", "ignore"
-  approved   Boolean  @default(false)
-  approvedBy String?  // User ID or Admin
-  createdAt  DateTime @default(now())
-
-  email      Email    @relation(fields: [emailId], references: [id], onDelete: Cascade)
 }
 
 model Role {
@@ -149,9 +97,59 @@ model Setting {
   updatedAt DateTime @updatedAt
 }
 
-enum PaidStatus {
-  PAID
-  LEFT
-  OWED
-  OTHER
+// ------------------------
+// AI Email Assistant Models
+// ------------------------
+model Email {
+  id           String   @id @default(cuid())
+  userId       String
+  gmailId      String   @unique
+  sender       String
+  subject      String
+  body         String
+  snippet      String?
+  receivedAt   DateTime
+  read         Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  summary        String?
+  category       String?
+  priority       String?
+  sentiment      String?
+  intent         String?
+  suggestedReply String?
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  analyses     EmailAnalysis[]
+  actions      EmailActionApproval[]
+
+  @@index([userId])
+  @@index([receivedAt])
+}
+
+model EmailAnalysis {
+  id             String   @id @default(cuid())
+  emailId        String   @unique
+  summary        String
+  category       String
+  priority       String?
+  sentiment      String?
+  intent         String?
+  suggestedReply String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  email          Email    @relation(fields: [emailId], references: [id], onDelete: Cascade)
+}
+
+model EmailActionApproval {
+  id         String   @id @default(cuid())
+  emailId    String
+  action     String   // "send", "draft", "ignore"
+  approved   Boolean  @default(false)
+  approvedBy String?  // User ID or Admin
+  createdAt  DateTime @default(now())
+
+  email      Email    @relation(fields: [emailId], references: [id], onDelete: Cascade)
 }
