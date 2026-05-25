@@ -2,14 +2,26 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/next-auth";
 import OpenAI from "openai";
 import { prisma } from "@/lib/prisma";
+import { retry } from "@/lib/utils";
+
+async function analyzeEmail(prompt: string) {
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  const text = await retry(async () => {
+    const res = await openai.chat.completions.create({
+      model: "gpt-5.4-mini",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.2,
+    });
+    return res.choices[0].message?.content ?? "";
+  }, 3, 1500);
+  return text;
+}
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
   const { id } = await params;
 
@@ -56,14 +68,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       ${email.body ?? ""}
     `;
 
-    // Call OpenAI
-    const response = await openai.chat.completions.create({
-      model: "gpt-5.4-mini",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.2,
-    });
 
-    const rawText = response.choices[0].message?.content ?? "";
+    const rawText = await analyzeEmail(prompt)
     let parsed: {
       summary?: string;
       category?: string;

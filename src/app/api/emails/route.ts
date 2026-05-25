@@ -2,6 +2,19 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/next-auth";
 import { getGmailClient } from "@/lib/gmail";
 import { prisma } from "@/lib/prisma";
+import { retry } from "@/lib/utils";
+
+async function fetchUnreadEmails(userId: string) {
+    return retry(async () => {
+        const gmail = await getGmailClient(userId);
+        const res = await gmail.users.messages.list({
+        userId: "me",
+        labelIds: ["INBOX", "UNREAD"],
+        maxResults: 20,
+        });
+        return res.data.messages || [];
+    }, 3, 1000);
+}
 
 export async function GET() {
     const session = await auth();
@@ -9,15 +22,7 @@ export async function GET() {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const gmail = await getGmailClient(session.user.id);
-
-    // 4. Fetch unread emails
-    const messagesRes = await gmail.users.messages.list({
-        userId: "me",
-        labelIds: ["INBOX", "UNREAD"],
-        maxResults: 20,
-    });
-
-    const messages = messagesRes.data.messages || [];
+    const messages = await fetchUnreadEmails(session.user.id)
     const emails = [];
 
     for (const msg of messages) {
