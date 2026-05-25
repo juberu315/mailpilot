@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 
 interface Email {
@@ -100,8 +100,12 @@ export function EmailTable() {
                       <SheetTrigger asChild>
                         <Button variant="outline">View</Button>
                       </SheetTrigger>
-                      <SheetContent>
-                        <h3 className="text-lg font-bold">{email.subject}</h3>
+                      <SheetContent className="p-6">
+                        <SheetHeader>
+                          <SheetTitle>
+                            {email.subject}
+                          </SheetTitle>
+                        </SheetHeader>
                         <p><strong>From:</strong> {email.sender}</p>
                         <p><strong>Status:</strong> {email.read ? "Read" : "Unread"}</p>
                         <p><strong>Received At:</strong> {new Date(email.receivedAt).toLocaleString()}</p>

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/next-auth";
-import { google } from "googleapis";
+import { getGmailClient } from "@/lib/gmail";
 import { prisma } from "@/lib/prisma";
 
 interface DraftRequest {
@@ -28,24 +28,7 @@ export async function POST(req: Request) {
 
   try {
     // Initialize OAuth2 client
-    const oauth2Client = new google.auth.OAuth2();
-    oauth2Client.setCredentials({
-      access_token: account.access_token!,
-      refresh_token: account.refresh_token!,
-    });
-
-    // Force token refresh if expired
-    oauth2Client.on("tokens", (tokens) => {
-      if (tokens.refresh_token) {
-        // Save new refresh token if provided
-        prisma.account.update({
-          where: { id: account.id },
-          data: { refresh_token: tokens.refresh_token },
-        }).catch(console.error);
-      }
-    });
-
-    const gmail = google.gmail({ version: "v1", auth: oauth2Client });
+    const gmail = await getGmailClient(session.user.id);
 
     // Build raw email
     const rawMessage = [
